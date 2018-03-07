@@ -12,7 +12,7 @@ import types
 #League of Ordinary Gentlemen (LoOG) fantasy football group. 
 #
 #This FSM shall contain a data member that is populated with every eligible NFL fantasy player. As 
-#players are drafted, they will be remved from this data member.
+#players are drafted, they will be removed from this data member.
 #
 #Each team will be a data class that will populate it's sub fields with drafted players
 #
@@ -26,7 +26,7 @@ import types
 #|                  |                        |   when timeout is reached.                 |
 #------------------------------------------------------------------------------------------
 
-__auuthor__ = 'Daniel Kuiper'
+__author__ = 'Daniel Kuiper'
 __copyright__ = 'Copyright 2018, Daniel Kuiper'
 __credits__ = ['Daniel Kuiper']
 __license__ = 'MIT'
