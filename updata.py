@@ -133,9 +133,9 @@ def update_keeper_val(driver=None, prev_player_df=None, player_df=None):
 	the full transaction history.
 	'''
 	driver.get('http://games.espn.com/ffl/recentactivity?leagueId=2205911&'
-		       'activityType=2')
+	           'activityType=2')
 	innerHTML = driver.execute_script(
-		"return document.getElementsByTagName('html')[0].innerHTML")
+	    "return document.getElementsByTagName('html')[0].innerHTML")
 	html = BeautifulSoup(innerHTML, 'html.parser')
 	''' Log the oldest transaction on the page so that you can check whether the
 	form submission for including full transactions has finished loading.
@@ -147,29 +147,49 @@ def update_keeper_val(driver=None, prev_player_df=None, player_df=None):
 	driver.find_element_by_name('startDate').submit()
 	while check_element_prev == check_element_cur:
 	    innerHTML = driver.execute_script(
-	    	"return document.getElementsByTagName('html')[0].innerHTML")
+	        "return document.getElementsByTagName('html')[0].innerHTML")
 	    html = BeautifulSoup(innerHTML, 'html.parser')
 	    check_element_prev = html.find_all('tr')[-1].get_text()
-	
-	''' Iterate over all of the currently owned players and assign their
-	keeper_val keeper values in the player_df DataFrame according to league 
-	rules.
+
+	''' Iterate over all of the currently owned players and assign 7 as their
+	keeper value if they were a FA pickup.
 	'''
-	for ind, player in player_df.loc[player_df['owner'] != 'FA'].iterrows():
-		try:
-		    trans_index = 0
-		    while True:
-		        trans_text = html(text=player['name']
-		        	)[trans_index].find_parents('td')[0].get_text()
-		        if not 'traded' in trans_text:
-		            player_df.loc[ind]['keeper_val'] = 7
-		            break
-		        else:
-		            trans_index += 1
-		except IndexError:
-		    draft_row = html(text=player['name'])[0].find_parents('tr')[0]
-		    round_header = draft_row.find_previous_siblings('tr')[-1]
-		    player_df.loc[ind]['keeper_val'] = int(round_header.get_text()[-1])
+	owned_players = player_df.loc[player_df['owner'] != 'FA']
+	for ind, player in owned_players.iterrows():
+	    try:
+	        trans_index = 0
+	        while True:
+	            trans_text = html(text=player['name']
+	                )[trans_index].find_parents('td')[0].get_text()
+	            if not 'traded' in trans_text:
+	                player_df.loc[ind]['keeper_val'] = 7
+	                break
+	            else:
+	                trans_index += 1
+	    except IndexError:
+	        pass
+
+	''' Iterate over all of the remaining owned players, which must have
+	been drafted, and assign their keeper values based on the round they
+	were drafted in.  Also, reduce their value by 1 if they were kept last
+	season.
+	'''
+	driver.get(
+	    'http://games.espn.com/ffl/tools/draftrecap?leagueId=2205911')
+	innerHTML = driver.execute_script(
+	    "return document.getElementsByTagName('html')[0].innerHTML")
+	html = BeautifulSoup(innerHTML, 'html.parser')
+	owned_players = player_df.loc[player_df['owner'] != 'FA']
+	drafted_players = owned_players.loc[pd.isnull(owned_players['keeper_val'])]
+	for ind, player in drafted_players.iterrows():
+	    draft_row = html(text=player['name'])[0].find_parents('tr')[0]
+	    round_header = draft_row.find_previous_siblings('tr')[-1].get_text()
+	    player_df.loc[ind]['keeper_val'] = int(re.split(' ', round_header)[-1])
+	    if prev_player_df:
+	        kept_twice = not pd.isnull(prev_player_df.loc[
+	            prev_player_df['name']==player['name']]['keeper_val'][0])
+	        if (player_df.loc[ind]['keeper_val']>1) & kept_twice:
+	            player_df.loc[ind]['keeper_val'] -= 1
 
     return(player_df)
 
